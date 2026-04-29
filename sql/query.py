@@ -71,8 +71,8 @@ class Query:
         return self
     
 
-    def where(self, condition: str, params=None):
-        self._where = condition
+    def where(self, expression, params = None):
+        self._where = expression
         if params:
             self._params.extend(params)
         return self
@@ -82,7 +82,9 @@ class Query:
         sql = f'SELECT * FROM {self.table}'
 
         if self._where:
-            sql += f' WHERE {self._where}'
+            where_sql, params = self._where.compile()
+            sql += f'WHERE {where_sql}'
+            self._params += params
 
         if self._limits:
             sql += f' LIMIT {self._limits}'
