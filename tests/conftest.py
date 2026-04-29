@@ -16,5 +16,10 @@ def db():
     exec.execute("INSERT INTO users VALUES(?, ?, ?)", [3, 'Sifat', 27])
     exec.execute("INSERT INTO users VALUES(?, ?, ?)", [4, 'Syed', 31])
     exec.execute("INSERT INTO users VALUES(?, ?, ?)", [5, 'Saif', 40])
+    exec.execute("INSERT INTO users VALUES(?, ?, ?)", [6, 'Rifat', 20])
+    exec.execute("INSERT INTO users VALUES(?, ?, ?)", [7, 'Emon', 21])
+    exec.execute("INSERT INTO users VALUES(?, ?, ?)", [8, 'Raihan', 29])
+    exec.execute("INSERT INTO users VALUES(?, ?, ?)", [9, 'Mahfuj', 30])
+    exec.execute("INSERT INTO users VALUES(?, ?, ?)", [10, 'Ishan', 39])
 
     return exec
