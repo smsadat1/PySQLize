@@ -42,6 +42,15 @@ class Column(Expression):
     def __init__(self, name):
         self.name = name
 
+    def between(self, low, high):
+        return Between(self, low, high)
+    
+    def in_(self, values):
+        return In(self, values)
+
+    def like(self, pattern):
+        return Like(self, pattern)
+
     def compile(self):
         return self.name, []
 
@@ -60,7 +69,7 @@ class UnaryExpression(Expression):
 
     def compile(self):
         sql, params = self.expr.compile()
-        return f'{self.op} ({sql})', params    
+        return f'{self.op} {sql}', params    
 
 
 class BinaryExpression(Expression):
@@ -74,12 +83,47 @@ class BinaryExpression(Expression):
         r_sql, r_params = self.right.compile()
 
         # wrap only if child is also a BinaryExpression
-        if isinstance(self.left, BinaryExpression):
-            l_sql = f"({l_sql})"
+        # if isinstance(self.left, BinaryExpression):
+        #     l_sql = f"({l_sql})"
 
-        if isinstance(self.right, BinaryExpression):
-            r_sql = f"({r_sql})"
+        # if isinstance(self.right, BinaryExpression):
+        #     r_sql = f"({r_sql})"
 
-        return f'{l_sql} {self.op} {r_sql}', l_params + r_params
+        return f'({l_sql} {self.op} {r_sql})', l_params + r_params
+    
+
+class Between(Expression):
+    def __init__(self, column, low, high):
+        self.column = column
+        self.low = low
+        self.high = high
+
+    def compile(self):
+        c_sql, c_params = self.column.compile()
+        return f"{c_sql} BETWEEN ? AND ?", c_params + [self.low, self.high]
 
 
+class Like(Expression):
+    def __init__(self, column, pattern):
+        self.column = column
+        self.pattern = pattern
+
+    def compile(self):
+        c_sql, c_params = self.column.compile()
+        return f"{c_sql} LIKE ?", c_params + [self.pattern]
+    
+
+class In(Expression):
+    def __init__(self, column, values):
+        self.column = column
+        self.values = values
+
+    def compile(self):
+
+        if not self.values:
+            return "1=0", []
+
+        c_sql, c_params = self.column.compile()
+        placeholders = ', '.join(['?'] * len(self.values))
+        sql = f"{c_sql} IN ({placeholders})"
+        return sql, c_params + list(self.values)

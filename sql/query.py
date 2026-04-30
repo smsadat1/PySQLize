@@ -8,11 +8,14 @@ class Query:
 
     def __init__(self, db, table):
         self.exec = db
-        self.table = table
+        
+        if isinstance(table, str):
+            self.table = table
+        else:
+            self.table = table.__tablename__
 
         self._limits = None
         self._order = None
-        self._params = []
         self._where = None
 
 
@@ -25,19 +28,23 @@ class Query:
 
 
     def count(self):
-        sql = f'SELECT COUNT(*) FROM {self.table}'
+        sql, params = self.compile()
+        sql = sql.replace('SELECT *', 'SELECT COUNT(*)')
 
-        if self._where:
-            sql += f' WHERE {self._where}'
-
-        row = self.exec.fetchone(sql, self._params)
-        return row[0]
+        row = self.exec.fetchone(sql, params)
+        return row[0] if row else 0
 
 
     def exists(self):
-        sql, params = self.compile()
-        sql += ' LIMIT 1'
+        sql = f'SELECT 1 FROM {self.table}'
+        params = []
 
+        if self._where is not None:
+            where_sql, where_params = self._where.compile()
+            sql += f' WHERE {where_sql}'
+            params += where_params
+
+        sql += ' LIMIT 1'
         row = self.exec.fetchone(sql, params)
         return row is not None
 
@@ -71,31 +78,47 @@ class Query:
         return self
     
 
-    def where(self, expression, params = None):
-        self._where = expression
-        if params:
-            self._params.extend(params)
+    def where(self, expr):
+        if self._where is not None:
+            self._where = self._where & expr
+        else:
+            self._where = expr
         return self
 
 
     def compile(self):
         sql = f'SELECT * FROM {self.table}'
+        params = []
 
-        if self._where:
-            where_sql, params = self._where.compile()
-            sql += f'WHERE {where_sql}'
-            self._params += params
-
-        if self._limits:
-            sql += f' LIMIT {self._limits}'
+        if self._where is not None:
+            where_sql, where_params = self._where.compile()
+            sql += f' WHERE {where_sql}'
+            params += where_params
 
         if self._order:
             sql += f' ORDER BY {self._order}'
 
-        return sql, self._params
+        if self._limits:
+            sql += f' LIMIT {self._limits}'
+
+        return sql, params
 
 
     def all(self):
         sql, params = self.compile()
         return self.exec.fetchall(sql, params)
 
+
+    def show_sql(self):
+        sql, params = self.compile()
+
+        for param in params:
+            if isinstance(param, str):
+                escaped = param.replace("'", "''")
+                value = f'{escaped}'
+            else:
+                value = str(param)
+
+            sql = sql.replace('?', value, 1)
+
+        return sql
